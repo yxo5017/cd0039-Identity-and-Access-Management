@@ -7,7 +7,7 @@ from urllib.request import urlopen
 
 AUTH0_DOMAIN = 'dev-sq7mzrpnl8jmmik1.jp.auth0.com'
 ALGORITHMS = ['RS256']
-API_AUDIENCE = 'CoffeeShopAPI'
+API_AUDIENCE = 'http://localhost:8080'
 
 ## AuthError Exception
 '''
@@ -34,8 +34,8 @@ def get_token_auth_header():
     if 'Authorization' not in request.headers: 
         abort(401)
     auth_header = request.headers['Authorization']
-    header_parts = auth_header.split('.')
-    if len(header_parts) != 3:
+    header_parts = auth_header.split(' ')
+    if len(header_parts) != 2 or header_parts[0].lower() != 'bearer':
         abort(401)
     return header_parts[1]
 
@@ -51,9 +51,9 @@ def get_token_auth_header():
     return true otherwise
 '''
 def check_permissions(permission, payload):
-    if 'permission' not in payload:
+    if 'permissions' not in payload:
         abort(403)
-    if permission not in payload['permission']:
+    if permission not in payload['permissions']:
         abort(403)
     return True
 '''
@@ -135,13 +135,11 @@ def verify_decode_jwt(token):
 '''
 def requires_auth(permission=''):
     def requires_auth_decorator(f):
+        print(permission)
         @wraps(f)
         def wrapper(*args, **kwargs):
             token = get_token_auth_header()
-            try:
-                payload = verify_decode_jwt(token)
-            except:
-                abort(401)
+            payload = verify_decode_jwt(token)
             check_permissions(permission, payload)
             return f(payload, *args, **kwargs)
         return wrapper

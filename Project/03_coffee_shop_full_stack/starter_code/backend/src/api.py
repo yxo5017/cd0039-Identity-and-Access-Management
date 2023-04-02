@@ -9,7 +9,7 @@ from .auth.auth import AuthError, requires_auth
 
 app = Flask(__name__)
 setup_db(app)
-CORS(app)
+CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:5000"])
 
 '''
 @TODO uncomment the following line to initialize the datbase
@@ -31,18 +31,17 @@ db_drop_and_create_all()
 
 @app.route('/drinks', methods=['GET'])
 def get_drinks():
-    print("test")
     try:
         drinksShortList = [drink.short() for drink in Drink.query.all()]
-        print(drinksShortList)
         return json.dumps({
             'success': True,
             'drinks': drinksShortList
         }), 200
-    except:
+    except Exception as e:
+        print(e)
         return json.dumps({
             'success': False,
-            'error': "Error with loading drinks occured"
+            'error': f"Error with creating a new drink: {str(e)}"
         }), 500
 '''
 @TODO implement endpoint
@@ -54,13 +53,12 @@ def get_drinks():
 '''
 @app.route('/drinks-detail', methods=['GET'])
 @requires_auth('get:drinks-detail')
-def get_drinks_detail(jwt):
+def get_drinks_detail(payload):
     try:
         drinksLongList = [drink.long() for drink in Drink.query.all()]
-        print(drinksLongList)
         return jsonify({
             'success': True,
-            'drinks-detail': drinksLongList
+            'drinks': drinksLongList
         }), 200
     except:
         return json.dumps({
@@ -78,12 +76,24 @@ def get_drinks_detail(jwt):
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the newly created drink
         or appropriate status code indicating reason for failure
 '''
-@app.route('/drinks', methods=['POST'], endpoint='post_drink')
+@app.route('/drinks', methods=['POST'])
 @requires_auth('post:drinks')
-def post_drinks_detail(jwt):
-    print(jwt)
-    return {"success": True, "drinks": drink}
+def post_drinks_detail(payload):
+    body = request.get_json()
+    try:
+        id = body.get('id')
+        title = body.get('title')
+        recipe = json.dumps(body.get('recipe'))
+        new_drink = Drink(id=id, title=title, recipe=recipe)
+        print(new_drink)
+        new_drink.insert()
 
+        return jsonify({
+            'success': True,
+            'drinks': [new_drink.long()]
+        }), 200
+    except Exception as e:
+        print(e)
 
 '''
 @TODO implement endpoint
@@ -96,7 +106,30 @@ def post_drinks_detail(jwt):
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks/<int:drink_id>', methods=['PATCH'])
+@requires_auth('patch:drinks')
+def update_drinks_detail(payload, drink_id):
+    body = {
+        'id': 1, 
+        'title': 'test', 
+        'recipe': [{'name': 'water', 'color': 'blue', 'parts': 1}]
+        }
+    try:
+        drink_id = Drink.query.filter(Drink.id==drink_id).one_or_none()
+        drink_id.title = body.get('title')
+        drink_id.recipe = json.dumps(body.get('recipe'))
+        drink_id.update()
 
+        return jsonify({
+            'success': True,
+            'drinks': [drink_id.long()]
+        }), 200
+    except Exception as e:
+        print(e)
+        return json.dumps({
+            'success': False,
+            'error': f"Error with creating a new drink: {str(e)}"
+        }), 500
 
 '''
 @TODO implement endpoint
@@ -108,7 +141,24 @@ def post_drinks_detail(jwt):
     returns status code 200 and json {"success": True, "delete": id} where id is the id of the deleted record
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks/<int:drink_id>', methods=['DELETE'])
+@requires_auth('delete:drinks')
+def delete_drinks(payload, drink_id):
+    try:
+        drink = Drink.query.filter(Drink.id==drink_id).one_or_none()
+        print(drink_id)
+        drink.delete()
 
+        return jsonify({
+            'success': True,
+            'drinks': drink_id
+        }), 200
+    except Exception as e:
+        print(e)
+        return json.dumps({
+            'success': False,
+            'error': f"Error with creating a new drink: {str(e)}"
+        }), 500
 
 # Error Handling
 '''
