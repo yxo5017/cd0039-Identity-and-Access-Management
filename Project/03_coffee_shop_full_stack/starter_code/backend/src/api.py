@@ -109,11 +109,7 @@ def post_drinks_detail(payload):
 @app.route('/drinks/<int:drink_id>', methods=['PATCH'])
 @requires_auth('patch:drinks')
 def update_drinks_detail(payload, drink_id):
-    body = {
-        'id': 1, 
-        'title': 'test', 
-        'recipe': [{'name': 'water', 'color': 'blue', 'parts': 1}]
-        }
+    body = request.get_json()
     try:
         drink_id = Drink.query.filter(Drink.id==drink_id).one_or_none()
         drink_id.title = body.get('title')
